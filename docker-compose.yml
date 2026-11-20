@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: ledger
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: .
+    command: ["npm", "start"]
+    environment:
+      DATABASE_URL: postgres://ledger:ledger@db:5432/ledger
+      JWT_SECRET: change-me-in-production
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: ["npm", "run", "worker"]
+    environment:
+      DATABASE_URL: postgres://ledger:ledger@db:5432/ledger
+      PAYOUT_FAILURE_RATE: "0.2"
+    depends_on:
+      db:
+        condition: service_healthy
